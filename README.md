@@ -1,7 +1,11 @@
 
 This is a simple tutorial for Streamlit and Ollama, toying with agentic
-applications.
+applications. , A simple tool to "create" your own LLM agents for simple conversations (that have no memory/context).
 
-It requires Ollama and llama3.1, but is otherwise just a tool to "create" your own LLM agents for simple conversations (that have no memory/context).
+It requires Ollama and llama3.1 running locally.
 
-There is not significant extensibility here to RAG, but it was fun
+There is not significant extensibility here to RAG, but it was fun for an hour or two, various issues include:
+- SQL injection/input validation
+- Single process/threaded
+- Poor error handling
+
