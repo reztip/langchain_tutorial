@@ -2,7 +2,7 @@ import streamlit as st
 import psycopg2
 from langchain.prompts import PromptTemplate    
 from langchain_ollama import ChatOllama
-from langchain_community.utilities import GoogleSerperAPIWrapper
+from langchain_community.tools import DuckDuckGoSearchRun, DuckDuckGoSearchResults
 import pydantic
 import os
 import collections
@@ -28,7 +28,7 @@ class PriorContext(pydantic.BaseModel):
     question: str
     reply: str
 
-def invoke_agent(agent: StreamlitAgent, user_question, prior_context: PriorContext = []):
+def invoke_agent(agent: StreamlitAgent, user_question, prior_context: PriorContext = [], augment_search = True):
 
     llm = ChatOllama(model = "llama3.1")
     prompt = PromptTemplate.from_template("""
@@ -43,10 +43,15 @@ def invoke_agent(agent: StreamlitAgent, user_question, prior_context: PriorConte
     """
     )
     chain = prompt | llm
-    #online = GoogleSerperAPIWrapper().invoke(user_question)
+    tool = DuckDuckGoSearchRun()
+    # user may not have relevant input
+    online = ""
+    if augment_search:
+        online = tool.invoke({"args": {"query": user_question}, 
+                          "id": "1", "name": tool.name, "type": "tool_call"})
     response = chain.invoke({"description": agent.description, 
                              "input": user_question, "context": prior_context or "",
-                             "online": ""})
+                             "online": online})
     return response.content
 
 # Establish a connection to the PostgreSQL database
@@ -77,7 +82,6 @@ def main():
             cursor.execute("INSERT INTO agents VALUES (%s, %s)", (new_agent_name, new_agent_description))
             conn.commit()
 
-    # Title of the page
 
     elif agent_choice != 'New Agent':
         # Show a list of existing agents
@@ -87,14 +91,14 @@ def main():
         
         # Create a text area for the user to input their question
         question = st.text_area("Ask an AI Question")
-
+        augment_search = st.radio("Augment search with online results?", [True, False], index=0)
         if st.button('Submit'):
             # Code here would typically involve interacting with an LLM, but 
             # for simplicity we'll just print out a mock response.
             cache = redis.Redis() 
             prior_context = cache.lrange( "llm_context", 0, -1 )
             agent = StreamlitAgent(name = str(agent_choice), description=str(description))
-            response = invoke_agent(agent, str(question), prior_context= prior_context)
+            response = invoke_agent(agent, str(question), prior_context= prior_context, augment_search=augment_search)
             _ = st.write(response)
 
             q = str(question)
