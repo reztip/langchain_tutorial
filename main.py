@@ -10,10 +10,11 @@ DB_NAME = 'ollama_tutorial'
 DB_USER = 'ollama_tutorial'
 DB_PASSWORD = 'ollama_tutorial'
 
+
 class StreamlitAgent(pydantic.BaseModel):
     name: str
     description: str
-def invoke_agent(agent: StreamlitAgent):
+def invoke_agent(agent: StreamlitAgent, user_question):
 
     llm = ChatOllama(model = "llama3.1")
     prompt = PromptTemplate.from_template(f"""
@@ -23,9 +24,8 @@ def invoke_agent(agent: StreamlitAgent):
     """
     )
     chain = prompt | llm
-    response = chain.invoke({"input": state["input"]})
-    decision = response.content.strip().lower()
-    return {"decision": decision, "input": state["input"]}
+    response = chain.invoke({"input": user_question})
+    return response.content
 
 # Establish a connection to the PostgreSQL database
 def main():
@@ -59,6 +59,8 @@ def main():
 
     elif agent_choice != 'New Agent':
         # Show a list of existing agents
+        cursor.execute(f"SELECT description FROM agents WHERE name = '{agent_choice}'")
+        description = [row[0] for row in cursor.fetchall()]
         st.write(f"Selected Agent: {agent_choice}")
         
         # Create a text area for the user to input their question
@@ -67,8 +69,9 @@ def main():
         if st.button('Submit'):
             # Code here would typically involve interacting with an LLM, but 
             # for simplicity we'll just print out a mock response.
-            responses = ["The answer is 42.", "It's a trick question. The answer is actually 23.", "I'm not sure."]
-            response = st.write(responses[0])
+            agent = StreamlitAgent(name = str(agent_choice), description=str(description))
+            response = invoke_agent(agent, str(question))
+            response = st.write(response)
     
     cursor.close()
 
