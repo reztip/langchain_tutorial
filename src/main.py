@@ -5,7 +5,6 @@ from langchain_ollama import ChatOllama
 from langchain_community.tools import DuckDuckGoSearchRun, DuckDuckGoSearchResults
 import pydantic
 import os
-import collections
 import redis
 
 # Database connection settings
@@ -67,7 +66,14 @@ def main():
     )
 
     cursor = conn.cursor()
-
+    # Create the agents table if it does not exist
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS agents (
+        name TEXT PRIMARY KEY,
+        description TEXT NOT NULL
+    )
+    """)
+    conn.commit()
     # Get the list of agent names from the database
     cursor.execute("SELECT name FROM agents")
     agents = [row[0] for row in cursor.fetchall()]
