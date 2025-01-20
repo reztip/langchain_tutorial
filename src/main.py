@@ -52,10 +52,10 @@ def invoke_agent(agent: StreamlitAgent, user_question, prior_context: PriorConte
     if augment_search:
         online = tool.invoke({"args": {"query": user_question}, 
                           "id": "1", "name": tool.name, "type": "tool_call"})
-    response = chain.invoke({"description": agent.description, 
+    model = chain.invoke({"description": agent.description, 
                              "input": user_question, "context": prior_context or "",
                              "online": online, "name": name})
-    return response.content
+    return model.content
 
 # Establish a connection to the PostgreSQL database
 def main():
@@ -108,7 +108,7 @@ def main():
             response = invoke_agent(agent, str(question), 
                                     prior_context= prior_context, 
                                     augment_search=augment_search, name = agent_choice)
-            _ = st.write(response)
+            _ = st.info(response)
 
             q = str(question)
             a = str(response)
