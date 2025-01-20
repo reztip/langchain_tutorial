@@ -4,28 +4,45 @@ from langchain.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
 import pydantic
 import os
+import collections
+import redis
 
 # Database connection settings
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("POSTGRES_DB")
-DB_USER = os.getenv("POSTGRES_USER")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+#DB_HOST = "localhost"
+#DB_NAME = "ollama_tutorial"
+#DB_USER = "ollama_tutorial"
+#DB_PASSWORD = "ollama_tutorial"
+
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_NAME = os.getenv("DB_NAME", "ollama_tutorial")
+DB_USER = os.getenv("DB_USER", "ollama_tutorial")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "ollama_tutorial")
 
 
 class StreamlitAgent(pydantic.BaseModel):
     name: str
     description: str
-def invoke_agent(agent: StreamlitAgent, user_question):
+
+class PriorContext(pydantic.BaseModel):
+    question: str
+    reply: str
+
+def invoke_agent(agent: StreamlitAgent, user_question, prior_context: PriorContext = []):
 
     llm = ChatOllama(model = "llama3.1")
-    prompt = PromptTemplate.from_template(f"""
-    You are an one of many agent that responds to simple questions on a UI.  However, your reponse is tailored to your personality, and you start the reply with your name.
+    prompt = PromptTemplate.from_template("""
+    You are an one of many agent that responds to simple questions on a UI.  
+    However, your reponse is tailored to your personality, and you start the reply with your name by stating 'My Name is'
     The following description is a background on your personality and dicates how you should respond:
-    Description: {agent.description}
+    Description: {description}
+    The user's question is {input}
+    The prior conversation context is {context}, which has questions from the user 
+    and replies from you.
+    Your name is likely in the prior context.
     """
     )
     chain = prompt | llm
-    response = chain.invoke({"input": user_question})
+    response = chain.invoke({"description": agent.description, "input": user_question, "context": prior_context or ""})
     return response.content
 
 # Establish a connection to the PostgreSQL database
@@ -70,9 +87,18 @@ def main():
         if st.button('Submit'):
             # Code here would typically involve interacting with an LLM, but 
             # for simplicity we'll just print out a mock response.
+            cache = redis.Redis() 
+            prior_context = cache.lrange( "llm_context", 0, -1 )
             agent = StreamlitAgent(name = str(agent_choice), description=str(description))
-            response = invoke_agent(agent, str(question))
-            response = st.write(response)
+            response = invoke_agent(agent, str(question), prior_context= prior_context)
+            _ = st.write(response)
+
+            q = str(question)
+            a = str(response)
+            
+            new_context = PriorContext(question = q, reply = a)
+            cache.lpush("llm_context", new_context.model_dump_json())
+            cache.ltrim("llm_context", 0, 10)
     
     cursor.close()
 
