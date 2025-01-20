@@ -3,12 +3,13 @@ import psycopg2
 from langchain.prompts import PromptTemplate    
 from langchain_ollama import ChatOllama
 import pydantic
+import os
 
 # Database connection settings
-DB_HOST = 'localhost'
-DB_NAME = 'ollama_tutorial'
-DB_USER = 'ollama_tutorial'
-DB_PASSWORD = 'ollama_tutorial'
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("POSTGRES_DB")
+DB_USER = os.getenv("POSTGRES_USER")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
 
 class StreamlitAgent(pydantic.BaseModel):
