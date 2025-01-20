@@ -32,14 +32,16 @@ def invoke_agent(agent: StreamlitAgent, user_question, prior_context: PriorConte
 
     llm = ChatOllama(model = "llama3.1")
     prompt = PromptTemplate.from_template("""
-    You are an one of many agent that responds to simple questions on a UI.  
-    However, your reponse is tailored to your personality, and you start the reply with your name by stating 'My Name is'
+    You are one of many agents that responds to simple questions on a UI.  
+    However, your reponse should be tailored to your personality.
     The following description is a background on your personality and dicates how you should respond:
     Description: {description}
-    The user's question is {input}
     The prior conversation context is {context}, which has questions from the user 
-    and replies from you.
+    and replies from you and potentially others, please ignore prior context if they are irrelevant.
     An online search yielded these results, which may be helpful for you: {online}
+
+    Please respond to the user's question in a way that is consistent with your personality.
+    The user's question is {input}
     """
     )
     chain = prompt | llm
@@ -85,7 +87,7 @@ def main():
 
     elif agent_choice != 'New Agent':
         # Show a list of existing agents
-        cursor.execute(f"SELECT description FROM agents WHERE name = '{agent_choice}'")
+        cursor.execute(f"SELECT description FROM agents WHERE name = %s ", (agent_choice,) )
         description = [row[0] for row in cursor.fetchall()]
         st.write(f"Selected Agent: {agent_choice}")
         
