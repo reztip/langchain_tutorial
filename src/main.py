@@ -2,6 +2,7 @@ import streamlit as st
 import psycopg2
 from langchain.prompts import PromptTemplate    
 from langchain_ollama import ChatOllama
+from langchain_community.utilities import GoogleSerperAPIWrapper
 import pydantic
 import os
 import collections
@@ -38,11 +39,14 @@ def invoke_agent(agent: StreamlitAgent, user_question, prior_context: PriorConte
     The user's question is {input}
     The prior conversation context is {context}, which has questions from the user 
     and replies from you.
-    Your name is likely in the prior context.
+    An online search yielded these results, which may be helpful for you: {online}
     """
     )
     chain = prompt | llm
-    response = chain.invoke({"description": agent.description, "input": user_question, "context": prior_context or ""})
+    #online = GoogleSerperAPIWrapper().invoke(user_question)
+    response = chain.invoke({"description": agent.description, 
+                             "input": user_question, "context": prior_context or "",
+                             "online": ""})
     return response.content
 
 # Establish a connection to the PostgreSQL database
